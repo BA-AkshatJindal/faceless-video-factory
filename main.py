@@ -1,5 +1,6 @@
 import os
 import sys
+import argparse
 import config
 import script_generator
 import voice_engine
@@ -11,7 +12,12 @@ import marketing_agent
 def run_faceless_factory_pipeline(niche_key: str = "ai_tools"):
     print("=====================================================")
     print("🚀 STARTING AUTOMATED FACELESS VIDEO & REVENUE ENGINE")
+    print(f"Target Niche: {niche_key}")
     print("=====================================================")
+
+    # Ensure valid niche key
+    if niche_key not in config.HIGH_INCOME_NICHES:
+        niche_key = "ai_tools"
 
     # Step 1: Generate Script
     print("\n[Step 1/5] Generating Metro City Hinglish viral script...")
@@ -25,7 +31,6 @@ def run_faceless_factory_pipeline(niche_key: str = "ai_tools"):
         raw_script=script_data.get("voice_script", "")
     )
     
-    # Enrich script_data with SEO metadata
     script_data["title"] = seo_metadata.get("seo_title", script_data.get("title"))
     script_data["description"] = seo_metadata.get("seo_description", script_data.get("description"))
     script_data["hashtags"] = seo_metadata.get("hashtags", script_data.get("hashtags"))
@@ -56,5 +61,9 @@ def run_faceless_factory_pipeline(niche_key: str = "ai_tools"):
     print("=====================================================")
 
 if __name__ == "__main__":
-    niche = sys.argv[1] if len(sys.argv) > 1 else "ai_tools"
-    run_faceless_factory_pipeline(niche)
+    parser = argparse.ArgumentParser(description="Autonomous Faceless Shorts Engine")
+    parser.add_argument("--niche", type=str, default="ai_tools", help="Revenue Niche Key")
+    args, unknown = parser.parse_known_args()
+    
+    selected_niche = args.niche if args.niche in config.HIGH_INCOME_NICHES else "ai_tools"
+    run_faceless_factory_pipeline(selected_niche)
