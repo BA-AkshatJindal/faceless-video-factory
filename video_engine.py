@@ -1,5 +1,4 @@
 import os
-import math
 import random
 import httpx
 from PIL import Image, ImageDraw, ImageFont
@@ -34,49 +33,45 @@ def get_indian_techie_host() -> Image.Image:
             print(f"[Video Engine] Error loading host avatar: {e}")
     return None
 
-def draw_text_with_outline(draw, position, text, font, fill_color="#FFFFFF", outline_color="#000000", outline_width=3, anchor="mm"):
-    """Draws text with heavy dark outline/shadow for 100% readability without ugly empty boxes."""
+def draw_text_with_outline(draw, position, text, font, fill_color="#FFFFFF", outline_color="#000000", outline_width=4, anchor="mm"):
+    """Draws text with heavy dark outline/shadow for 100% readability over video background."""
     x, y = position
-    # Draw outline offsets
     for dx in range(-outline_width, outline_width + 1):
         for dy in range(-outline_width, outline_width + 1):
             if dx != 0 or dy != 0:
                 draw.text((x + dx, y + dy), text, font=font, fill=outline_color, anchor=anchor)
-    # Draw main text
     draw.text((x, y), text, font=font, fill=fill_color, anchor=anchor)
 
 def create_viral_short_frame(f_idx: int, total_frames: int, title: str, subtitle_text: str, host_img: Image.Image = None, width: int = 720, height: int = 1280, output_path: str = "frame.png") -> str:
-    """Generates an ultra-clean viral Shorts frame (Alex Hormozi / Ali Abdaal style):
-    - Full-screen 9:16 Photorealistic Studio Host background.
-    - Zero ugly empty boxes.
-    - Ultra-large 52px Montserrat-Bold yellow/white captions with heavy drop outlines.
-    - Sleek compact top header pill.
+    """Generates a 100% full-screen 9:16 vertical video frame:
+    - Full-screen 9:16 Studio Host background (NO CIRCLE, NO CUTOUT, NO BOXES).
+    - Ultra-large 52px Montserrat-Bold yellow/white captions overlaid directly on lower third.
+    - Compact top header badge.
     """
-    # 1. FULL-SCREEN STUDIO HOST BACKGROUND
+    # 1. FULL-SCREEN 9:16 BACKGROUND (NO CIRCLE, NO CUTOUT)
     if host_img:
         img = host_img.resize((width, height)).copy()
-        # Add subtle dark ambient vignette so text pops
+        # Apply subtle dark vignette overlay so captions pop cleanly
         dark_overlay = Image.new("RGB", (width, height), color="#000000")
-        img = Image.blend(img, dark_overlay, alpha=0.35)
+        img = Image.blend(img, dark_overlay, alpha=0.30)
     else:
         img = Image.new("RGB", (width, height), color="#060913")
 
     draw = ImageDraw.Draw(img)
     center_x = width // 2
 
-    # 2. SLEEK TOP PILL BADGE (Compact & Clean)
-    font_badge = get_font(22)
-    badge_text = f"⚡ {title.upper()[:30]}" if title else "⚡ VIRAL TECH HACKS"
+    # 2. TOP HEADER BADGE (Compact & Clean)
+    font_badge = get_font(24)
+    badge_text = f"⚡ {title.upper()[:30]}" if title else "⚡ VIRAL TECH HACKS 2026"
     
-    # Measure badge width
-    draw.rounded_rectangle([center_x - 220, 60, center_x + 220, 110], radius=12, fill=(10, 16, 32), outline="#00e5ff", width=3)
-    draw.text((center_x, 85), badge_text, fill="#00e5ff", font=font_badge, anchor="mm")
+    draw.rounded_rectangle([center_x - 220, 60, center_x + 220, 115], radius=14, fill=(10, 16, 32), outline="#00e5ff", width=3)
+    draw.text((center_x, 87), badge_text, fill="#00e5ff", font=font_badge, anchor="mm")
 
-    # 3. VIRAL ALEX HORMOZI STYLE CAPTIONS (Direct Overlay, Large 52px)
+    # 3. VIRAL ALEX HORMOZI STYLE CAPTIONS (Direct Overlay, Large 52px, NO BOXES)
     font_caption = get_font(52)
     if subtitle_text:
         words = subtitle_text.upper().split()
-        caption_y = 960  # Positioned in lower third above YouTube Shorts UI
+        caption_y = 960  # Positioned in lower third above YouTube Shorts UI buttons
 
         if len(words) > 3:
             line1 = " ".join(words[:len(words)//2])
@@ -90,8 +85,8 @@ def create_viral_short_frame(f_idx: int, total_frames: int, title: str, subtitle
     return output_path
 
 def render_short_video(voiceover_path: str, script_data: dict, output_path: str = "final_short.mp4") -> str:
-    """Renders full 9:16 vertical video with full-screen photorealistic studio background & large Hormozi captions."""
-    print("[Video Engine] Starting ultra-clean viral Shorts compilation...")
+    """Renders full 9:16 vertical video with 100% full-screen studio background (NO CIRCLE, NO BOXES)."""
+    print("[Video Engine] Starting 100% full-screen 9:16 video compilation...")
     
     # 1. Load Audio Voiceover
     audio_clip = AudioFileClip(voiceover_path)
@@ -120,7 +115,7 @@ def render_short_video(voiceover_path: str, script_data: dict, output_path: str 
     os.makedirs(temp_dir, exist_ok=True)
 
     total_frames_count = int(duration * fps)
-    print(f"[Video Engine] Rendering {total_frames_count} frames with full-screen 9:16 studio background & 52px captions...")
+    print(f"[Video Engine] Rendering {total_frames_count} frames with 100% full-screen 9:16 background (NO CIRCLE)...")
 
     for f_idx in range(total_frames_count):
         t = f_idx / fps
@@ -132,7 +127,7 @@ def render_short_video(voiceover_path: str, script_data: dict, output_path: str 
         frame_files.append(frame_path)
 
     # 5. Create ImageSequenceClip from frames
-    print("[Video Engine] Encoding ultra-clean MP4 video file...")
+    print("[Video Engine] Encoding 100% full-screen MP4 video file...")
     clip = ImageSequenceClip(frame_files, fps=fps)
     
     if hasattr(clip, 'with_audio'):
@@ -157,8 +152,8 @@ def render_short_video(voiceover_path: str, script_data: dict, output_path: str 
     except Exception:
         pass
 
-    print(f"[Video Engine SUCCESS] Rendered ultra-clean video to {output_path}")
+    print(f"[Video Engine SUCCESS] Rendered 100% full-screen video to {output_path}")
     return output_path
 
 if __name__ == "__main__":
-    create_viral_short_frame(0, 30, "3 FREE AI TOOLS THAT FEEL ILLEGAL TO KNOW", "STOP WASTING HOURS DOING MANUAL WORK IN 2026", output_path="preview_clean.png")
+    create_viral_short_frame(0, 30, "3 FREE AI TOOLS THAT FEEL ILLEGAL TO KNOW", "STOP WASTING HOURS DOING MANUAL WORK IN 2026", output_path="preview_nocircle.png")
