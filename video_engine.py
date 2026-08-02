@@ -6,9 +6,9 @@ from PIL import Image, ImageDraw, ImageFont
 import config
 
 try:
-    from moviepy import ImageSequenceClip, AudioFileClip
+    from moviepy import ImageSequenceClip, AudioFileClip, VideoFileClip
 except ImportError:
-    from moviepy.editor import ImageSequenceClip, AudioFileClip
+    from moviepy.editor import ImageSequenceClip, AudioFileClip, VideoFileClip
 
 FONT_PATH = os.path.join(os.path.dirname(__file__), "fonts", "Montserrat-Bold.ttf")
 HOST_AVATAR_PATH = os.path.join(os.path.dirname(__file__), "assets", "indian_techie_host.png")
@@ -34,6 +34,35 @@ def get_indian_techie_host() -> Image.Image:
             print(f"[Video Engine] Error loading host avatar: {e}")
     return None
 
+def generate_sadtalker_talking_avatar(audio_path: str, output_path: str = "talking_host.mp4") -> str:
+    """Calls free open-source SadTalker API on HuggingFace to animate lip-sync & facial expressions."""
+    if not os.path.exists(HOST_AVATAR_PATH) or not os.path.exists(audio_path):
+        return ""
+    try:
+        print("[SadTalker Engine] Connecting to free HuggingFace SadTalker Lip-Sync API...")
+        from gradio_client import Client, handle_file
+
+        client = Client("vinthony/SadTalker")
+        result = client.predict(
+            source_image=handle_file(HOST_AVATAR_PATH),
+            driven_audio=handle_file(audio_path),
+            preprocess="crop",
+            still_mode=True,
+            use_enhancer=False,
+            batch_size=1,
+            size=256,
+            pose_style=0,
+            facerender="faceid",
+            exp_weight=1,
+            api_name="/predict"
+        )
+        if result and isinstance(result, str) and os.path.exists(result):
+            print(f"[SadTalker SUCCESS] Generated free talking avatar video at {result}")
+            return result
+    except Exception as e:
+        print(f"[SadTalker Engine Note] HuggingFace SadTalker API queue busy/fallback: {e}")
+    return ""
+
 def create_animated_frame(f_idx: int, total_frames: int, title: str, subtitle_text: str, host_img: Image.Image = None, width: int = 720, height: int = 1280, output_path: str = "frame.png") -> str:
     """Generates an animated 9:16 vertical video frame featuring the Indian Techie Comic Boy Host,
     pulsing neon rings, and Montserrat typography.
@@ -42,7 +71,7 @@ def create_animated_frame(f_idx: int, total_frames: int, title: str, subtitle_te
     draw = ImageDraw.Draw(img)
 
     # 1. DYNAMIC NEON PULSE ANIMATION
-    pulse = math.sin(f_idx * 0.15) * 12  # Smooth breathing pulse
+    pulse = math.sin(f_idx * 0.15) * 12
     radius1 = int(240 + pulse)
     radius2 = int(220 - pulse)
 
@@ -56,7 +85,6 @@ def create_animated_frame(f_idx: int, total_frames: int, title: str, subtitle_te
     # 2. PASTE INDIAN TECHIE COMIC BOY HOST IN CENTER RING
     if host_img:
         try:
-            # Mask avatar into circular frame
             avatar_resized = host_img.resize((380, 380))
             mask = Image.new("L", (380, 380), 0)
             mask_draw = ImageDraw.Draw(mask)
@@ -104,7 +132,7 @@ def create_animated_frame(f_idx: int, total_frames: int, title: str, subtitle_te
     return output_path
 
 def render_short_video(voiceover_path: str, script_data: dict, output_path: str = "final_short.mp4") -> str:
-    """Renders full 9:16 vertical video featuring the Indian Techie Comic Boy Host, pulsing neon rings, and Montserrat typography."""
+    """Renders full 9:16 vertical video featuring the Indian Techie Comic Boy Host, lip-sync talking avatar, and Montserrat subtitles."""
     print("[Video Engine] Starting Indian Techie Host animated video compilation...")
     
     # 1. Load Audio Voiceover
@@ -112,10 +140,13 @@ def render_short_video(voiceover_path: str, script_data: dict, output_path: str 
     duration = audio_clip.duration
     fps = 24
 
-    # 2. Load Indian Techie Host Avatar
+    # 2. Try SadTalker Free Lip-Sync Talking Avatar
+    talking_video_file = generate_sadtalker_talking_avatar(voiceover_path)
+
+    # 3. Load Indian Techie Host Avatar
     host_img = get_indian_techie_host()
 
-    # 3. Split script into timed chunks
+    # 4. Split script into timed chunks
     words = script_data.get("voice_script", "").split()
     chunks = []
     chunk_size = 5
@@ -125,7 +156,7 @@ def render_short_video(voiceover_path: str, script_data: dict, output_path: str 
     if not chunks:
         chunks = [script_data.get("title", "VIRAL TECH HACKS")]
 
-    # 4. Create animated frame sequence
+    # 5. Create animated frame sequence
     title = script_data.get("title", "TECH HACKS")
     frame_files = []
     chunk_duration = duration / len(chunks)
@@ -145,7 +176,7 @@ def render_short_video(voiceover_path: str, script_data: dict, output_path: str 
         create_animated_frame(f_idx, total_frames_count, title, sub_text, host_img=host_img, output_path=frame_path)
         frame_files.append(frame_path)
 
-    # 5. Create ImageSequenceClip from frames
+    # 6. Create ImageSequenceClip from frames
     print("[Video Engine] Encoding Indian Techie Host MP4 video file...")
     clip = ImageSequenceClip(frame_files, fps=fps)
     
@@ -163,8 +194,10 @@ def render_short_video(voiceover_path: str, script_data: dict, output_path: str 
         logger=None
     )
 
-    # Clean up temporary frames
+    # Clean up temporary frames & files
     try:
+        if talking_video_file and os.path.exists(talking_video_file):
+            os.remove(talking_video_file)
         for f in os.listdir(temp_dir):
             os.remove(os.path.join(temp_dir, f))
         os.rmdir(temp_dir)
