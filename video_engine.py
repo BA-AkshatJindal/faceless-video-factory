@@ -1,5 +1,4 @@
 import os
-import time
 import math
 import random
 import httpx
@@ -7,9 +6,9 @@ from PIL import Image, ImageDraw, ImageFont
 import config
 
 try:
-    from moviepy import ImageSequenceClip, AudioFileClip, VideoFileClip
+    from moviepy import ImageSequenceClip, AudioFileClip
 except ImportError:
-    from moviepy.editor import ImageSequenceClip, AudioFileClip, VideoFileClip
+    from moviepy.editor import ImageSequenceClip, AudioFileClip
 
 FONT_PATH = os.path.join(os.path.dirname(__file__), "fonts", "Montserrat-Bold.ttf")
 HOST_AVATAR_PATH = os.path.join(os.path.dirname(__file__), "assets", "indian_techie_host.png")
@@ -26,100 +25,38 @@ def get_font(size: int):
     except Exception:
         return ImageFont.load_default()
 
-def generate_did_hyperrealistic_video(script_text: str, audio_path: str, output_path: str = "did_talking_host.mp4") -> str:
-    """Generates a 100% photorealistic talking human video with natural facial expressions,
-    eye blinks, and lip-sync using D-ID / HeyGen API when API key is provided.
-    """
-    api_key = os.environ.get("DID_API_KEY") or os.environ.get("HEYGEN_API_KEY")
-    if not api_key:
-        print("[Neural Video Engine] DID_API_KEY / HEYGEN_API_KEY not set. Using SadTalker/Pillow fallback engine.")
-        return ""
+def get_indian_techie_host() -> Image.Image:
+    """Loads the official Indian Techie Host Avatar."""
+    if os.path.exists(HOST_AVATAR_PATH):
+        try:
+            return Image.open(HOST_AVATAR_PATH).convert("RGB")
+        except Exception as e:
+            print(f"[Video Engine] Error loading host avatar: {e}")
+    return None
 
+def fetch_free_broll_graphic(prompt_summary: str, output_path: str = "broll.png", width: int = 720, height: int = 1280) -> str:
+    """Fetch 100% Free AI background graphic from Pollinations.ai FLUX engine."""
     try:
-        print("[Neural Video Engine] Calling D-ID Photorealistic Video API for 100% realistic talking host...")
-        headers = {
-            "Authorization": f"Basic {api_key}",
-            "Content-Type": "application/json"
-        }
-        
-        # Upload image or pass direct host URL
-        payload = {
-            "source_url": "https://raw.githubusercontent.com/BA-AkshatJindal/faceless-video-factory/main/assets/indian_techie_host.png",
-            "script": {
-                "type": "text",
-                "input": script_text,
-                "provider": {"type": "microsoft", "voice_id": "en-IN-PrabhatNeural"}
-            },
-            "config": {
-                "fluent": True,
-                "pad_audio": "0.5",
-                "stitch": True
-            }
-        }
-        
-        res = httpx.post("https://api.d-id.com/talks", json=payload, headers=headers, timeout=30.0)
-        data = res.json()
-        talk_id = data.get("id")
-        
-        if not talk_id:
-            print(f"[Neural Video Engine Warning] API response: {data}")
-            return ""
-
-        print(f"[Neural Video Engine] Rendering photorealistic video (ID: {talk_id})...")
-        for _ in range(12):
-            time.sleep(5)
-            status_res = httpx.get(f"https://api.d-id.com/talks/{talk_id}", headers=headers).json()
-            if status_res.get("status") == "done":
-                result_url = status_res.get("result_url")
-                if result_url:
-                    video_res = httpx.get(result_url)
-                    with open(output_path, "wb") as f:
-                        f.write(video_res.content)
-                    print(f"[Neural Video Engine SUCCESS] Downloaded photorealistic talking video to {output_path}")
-                    return output_path
-            elif status_res.get("status") == "error":
-                print(f"[Neural Video Engine Error] D-ID failed: {status_res}")
-                break
-
-    except Exception as e:
-        print(f"[Neural Video Engine Error] Failed photorealistic video API call: {e}")
-
+        encoded_prompt = f"futuristic%203d%20tech%20{prompt_summary}".replace(" ", "%20")
+        url = f"https://pollinations.ai/p/{encoded_prompt}?width={width}&height={height}&model=flux-realism&seed={random.randint(1, 99999)}"
+        res = httpx.get(url, timeout=10.0)
+        if res.status_code == 200:
+            with open(output_path, "wb") as f:
+                f.write(res.content)
+            return output_path
+    except Exception:
+        pass
     return ""
 
-def generate_sadtalker_talking_avatar(audio_path: str, output_path: str = "talking_host.mp4") -> str:
-    """Calls free open-source SadTalker API on HuggingFace to animate lip-sync & facial expressions."""
-    if not os.path.exists(HOST_AVATAR_PATH) or not os.path.exists(audio_path):
-        return ""
-    try:
-        print("[SadTalker Engine] Connecting to free HuggingFace SadTalker Lip-Sync API...")
-        from gradio_client import Client, handle_file
-
-        client = Client("vinthony/SadTalker")
-        result = client.predict(
-            source_image=handle_file(HOST_AVATAR_PATH),
-            driven_audio=handle_file(audio_path),
-            preprocess="crop",
-            still_mode=False,
-            use_enhancer=True,
-            batch_size=1,
-            size=256,
-            pose_style=0,
-            facerender="faceid",
-            exp_weight=1,
-            api_name="/predict"
-        )
-        if result and isinstance(result, str) and os.path.exists(result):
-            print(f"[SadTalker SUCCESS] Generated free talking avatar video at {result}")
-            return result
-    except Exception as e:
-        print(f"[SadTalker Engine Note] HuggingFace SadTalker API fallback: {e}")
-    return ""
-
-def create_animated_frame(f_idx: int, total_frames: int, title: str, subtitle_text: str, host_img: Image.Image = None, width: int = 720, height: int = 1280, output_path: str = "frame.png") -> str:
-    """Generates an animated 9:16 vertical video frame featuring the Photorealistic Indian Techie Host,
+def create_animated_frame(f_idx: int, total_frames: int, title: str, subtitle_text: str, host_img: Image.Image = None, broll_img: Image.Image = None, width: int = 720, height: int = 1280, output_path: str = "frame.png") -> str:
+    """Generates an animated 9:16 vertical video frame featuring the Indian Techie Host,
     pulsing neon rings, and Montserrat typography.
     """
-    img = Image.new("RGB", (width, height), color="#050811")
+    if broll_img:
+        img = broll_img.copy()
+    else:
+        img = Image.new("RGB", (width, height), color="#050811")
+
     draw = ImageDraw.Draw(img)
 
     # 1. DYNAMIC NEON PULSE ANIMATION
@@ -130,10 +67,11 @@ def create_animated_frame(f_idx: int, total_frames: int, title: str, subtitle_te
     center_x = width // 2
     center_y = 520
 
+    # Draw animated glowing neon rings around avatar
     draw.ellipse([center_x - radius1, center_y - radius1, center_x + radius1, center_y + radius1], outline="#00e5ff", width=4)
     draw.ellipse([center_x - radius2, center_y - radius2, center_x + radius2, center_y + radius2], outline="#9d4edd", width=3)
 
-    # 2. PASTE PHOTOREALISTIC INDIAN TECHIE HOST IN CENTER RING
+    # 2. PASTE INDIAN TECHIE HOST IN CENTER RING
     if host_img:
         try:
             avatar_resized = host_img.resize((380, 380))
@@ -158,10 +96,10 @@ def create_animated_frame(f_idx: int, total_frames: int, title: str, subtitle_te
         t_line2 = " ".join(words_title[len(words_title)//2:])
         draw.text((center_x, box_top_y1 + 45), t_line1, fill="#ffffff", font=font_header, anchor="mm")
         draw.text((center_x, box_top_y1 + 95), t_line2, fill="#ffffff", font=font_header, anchor="mm")
-        draw.text((center_x, box_top_y1 + 135), "⚡ REAL INDIAN TECH CREATOR • DAILY HACKS", fill="#00e5ff", font=font_subhead, anchor="mm")
+        draw.text((center_x, box_top_y1 + 135), "⚡ INDIAN TECHIE HOST • DAILY HACKS 2026", fill="#00e5ff", font=font_subhead, anchor="mm")
     else:
         draw.text((center_x, box_top_y1 + 55), title.upper(), fill="#ffffff", font=font_header, anchor="mm")
-        draw.text((center_x, box_top_y1 + 120), "⚡ REAL INDIAN TECH CREATOR • DAILY HACKS", fill="#00e5ff", font=font_subhead, anchor="mm")
+        draw.text((center_x, box_top_y1 + 120), "⚡ INDIAN TECHIE HOST • DAILY HACKS 2026", fill="#00e5ff", font=font_subhead, anchor="mm")
 
     # 4. SUBTITLE OVERLAY (Big Bold Yellow Subtitles)
     font_sub = get_font(42)
@@ -183,26 +121,27 @@ def create_animated_frame(f_idx: int, total_frames: int, title: str, subtitle_te
     return output_path
 
 def render_short_video(voiceover_path: str, script_data: dict, output_path: str = "final_short.mp4") -> str:
-    """Renders full 9:16 vertical video featuring the Photorealistic Indian Tech Host, lip-sync talking avatar, and Montserrat subtitles."""
-    print("[Video Engine] Starting Photorealistic Indian Tech Host video compilation...")
+    """Renders full 9:16 vertical video on 100% Permanent Free Stack ($0/month)."""
+    print("[Video Engine] Starting 100% Free Stack video compilation...")
     
     # 1. Load Audio Voiceover
     audio_clip = AudioFileClip(voiceover_path)
     duration = audio_clip.duration
     fps = 24
 
-    # 2. Check for Neural Video API (D-ID / HeyGen) or SadTalker Lip-Sync
-    neural_video = generate_did_hyperrealistic_video(script_data.get("voice_script", ""), voiceover_path)
-    if not neural_video:
-        neural_video = generate_sadtalker_talking_avatar(voiceover_path)
-
-    # 3. Load Photorealistic Indian Tech Host Avatar
-    host_img = None
-    if os.path.exists(HOST_AVATAR_PATH):
+    # 2. Fetch Free B-Roll Graphic
+    broll_path = fetch_free_broll_graphic(script_data.get("title", "AI tech"))
+    broll_img = None
+    if broll_path and os.path.exists(broll_path):
         try:
-            host_img = Image.open(HOST_AVATAR_PATH).convert("RGB")
+            broll_img = Image.open(broll_path).convert("RGB").resize((720, 1280))
+            dark_overlay = Image.new("RGB", (720, 1280), color="#000000")
+            broll_img = Image.blend(broll_img, dark_overlay, alpha=0.65)
         except Exception:
-            host_img = None
+            broll_img = None
+
+    # 3. Load Indian Techie Host Avatar
+    host_img = get_indian_techie_host()
 
     # 4. Split script into timed chunks
     words = script_data.get("voice_script", "").split()
@@ -223,7 +162,7 @@ def render_short_video(voiceover_path: str, script_data: dict, output_path: str 
     os.makedirs(temp_dir, exist_ok=True)
 
     total_frames_count = int(duration * fps)
-    print(f"[Video Engine] Animating {total_frames_count} frames with Photorealistic Host & pulse effects...")
+    print(f"[Video Engine] Animating {total_frames_count} frames on 100% Free Stack...")
 
     for f_idx in range(total_frames_count):
         t = f_idx / fps
@@ -231,11 +170,11 @@ def render_short_video(voiceover_path: str, script_data: dict, output_path: str 
         sub_text = chunks[chunk_idx]
 
         frame_path = os.path.join(temp_dir, f"frame_{f_idx:05d}.png")
-        create_animated_frame(f_idx, total_frames_count, title, sub_text, host_img=host_img, output_path=frame_path)
+        create_animated_frame(f_idx, total_frames_count, title, sub_text, host_img=host_img, broll_img=broll_img, output_path=frame_path)
         frame_files.append(frame_path)
 
     # 6. Create ImageSequenceClip from frames
-    print("[Video Engine] Encoding Photorealistic Indian Tech Host MP4 video file...")
+    print("[Video Engine] Encoding MP4 video file...")
     clip = ImageSequenceClip(frame_files, fps=fps)
     
     if hasattr(clip, 'with_audio'):
@@ -252,18 +191,18 @@ def render_short_video(voiceover_path: str, script_data: dict, output_path: str 
         logger=None
     )
 
-    # Clean up temporary frames
+    # Clean up temporary frames & graphics
     try:
-        if neural_video and os.path.exists(neural_video):
-            os.remove(neural_video)
+        if broll_path and os.path.exists(broll_path):
+            os.remove(broll_path)
         for f in os.listdir(temp_dir):
             os.remove(os.path.join(temp_dir, f))
         os.rmdir(temp_dir)
     except Exception:
         pass
 
-    print(f"[Video Engine SUCCESS] Rendered Photorealistic video to {output_path}")
+    print(f"[Video Engine SUCCESS] Rendered Permanent Free Stack video to {output_path}")
     return output_path
 
 if __name__ == "__main__":
-    create_animated_frame(0, 30, "3 FREE AI TOOLS THAT FEEL ILLEGAL TO KNOW", "STOP WASTING HOURS DOING MANUAL WORK IN 2026", output_path="preview_real.png")
+    create_animated_frame(0, 30, "3 FREE AI TOOLS THAT FEEL ILLEGAL TO KNOW", "STOP WASTING HOURS DOING MANUAL WORK IN 2026", output_path="preview_free.png")
