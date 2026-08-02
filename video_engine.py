@@ -26,7 +26,7 @@ def get_font(size: int):
         return ImageFont.load_default()
 
 def get_indian_techie_host() -> Image.Image:
-    """Loads the official Indian Techie Host Avatar."""
+    """Loads the official Photorealistic Indian Tech Host Avatar."""
     if os.path.exists(HOST_AVATAR_PATH):
         try:
             return Image.open(HOST_AVATAR_PATH).convert("RGB")
@@ -34,11 +34,11 @@ def get_indian_techie_host() -> Image.Image:
             print(f"[Video Engine] Error loading host avatar: {e}")
     return None
 
-def fetch_free_broll_graphic(prompt_summary: str, output_path: str = "broll.png", width: int = 720, height: int = 1280) -> str:
-    """Fetch 100% Free AI background graphic from Pollinations.ai FLUX engine."""
+def fetch_cinematic_tool_broll(prompt_summary: str, output_path: str = "cinematic_broll.png", width: int = 720, height: int = 1280) -> str:
+    """Fetch 4K Cinematic Dark Cyber-Tech B-Roll Graphic with Tool UI overlays from Pollinations.ai FLUX engine."""
     try:
-        encoded_prompt = f"futuristic%203d%20tech%20{prompt_summary}".replace(" ", "%20")
-        url = f"https://pollinations.ai/p/{encoded_prompt}?width={width}&height={height}&model=flux-realism&seed={random.randint(1, 99999)}"
+        cinematic_prompt = f"4k cinematic dark mode tech studio workspace with blue and purple RGB ambient lighting, floating glassmorphism UI card of {prompt_summary}, sleek Mac coding desktop with particle HUD glow, professional video render".replace(" ", "%20")
+        url = f"https://pollinations.ai/p/{cinematic_prompt}?width={width}&height={height}&model=flux-realism&seed={random.randint(1, 99999)}"
         res = httpx.get(url, timeout=10.0)
         if res.status_code == 200:
             with open(output_path, "wb") as f:
@@ -49,17 +49,20 @@ def fetch_free_broll_graphic(prompt_summary: str, output_path: str = "broll.png"
     return ""
 
 def create_animated_frame(f_idx: int, total_frames: int, title: str, subtitle_text: str, host_img: Image.Image = None, broll_img: Image.Image = None, width: int = 720, height: int = 1280, output_path: str = "frame.png") -> str:
-    """Generates an animated 9:16 vertical video frame featuring the Indian Techie Host,
-    pulsing neon rings, and Montserrat typography.
+    """Generates a cinematic 9:16 vertical video frame featuring:
+    - Photorealistic Indian Tech Host in studio setting.
+    - Floating glassmorphism tool UI card overlays.
+    - Animated blue & purple RGB ambient pulse rings.
+    - Montserrat-Bold yellow/white typography.
     """
     if broll_img:
         img = broll_img.copy()
     else:
-        img = Image.new("RGB", (width, height), color="#050811")
+        img = Image.new("RGB", (width, height), color="#04060e")
 
     draw = ImageDraw.Draw(img)
 
-    # 1. DYNAMIC NEON PULSE ANIMATION
+    # 1. CINEMATIC RGB AMBIENT LIGHTING & DYNAMIC NEON PULSE RINGS
     pulse = math.sin(f_idx * 0.15) * 12
     radius1 = int(240 + pulse)
     radius2 = int(220 - pulse)
@@ -67,11 +70,11 @@ def create_animated_frame(f_idx: int, total_frames: int, title: str, subtitle_te
     center_x = width // 2
     center_y = 520
 
-    # Draw animated glowing neon rings around avatar
+    # Draw glowing cyan & purple RGB ambient studio rings around host
     draw.ellipse([center_x - radius1, center_y - radius1, center_x + radius1, center_y + radius1], outline="#00e5ff", width=4)
     draw.ellipse([center_x - radius2, center_y - radius2, center_x + radius2, center_y + radius2], outline="#9d4edd", width=3)
 
-    # 2. PASTE INDIAN TECHIE HOST IN CENTER RING
+    # 2. PASTE PHOTOREALISTIC INDIAN TECH HOST IN CENTER RING
     if host_img:
         try:
             avatar_resized = host_img.resize((380, 380))
@@ -82,7 +85,7 @@ def create_animated_frame(f_idx: int, total_frames: int, title: str, subtitle_te
         except Exception as e:
             print(f"[Video Engine] Paste note: {e}")
 
-    # 3. TOP HEADER TITLE BADGE (Montserrat-Bold)
+    # 3. TOP GLASSMORPHISM HEADER TITLE BADGE (Montserrat-Bold)
     font_header = get_font(36)
     font_subhead = get_font(18)
 
@@ -96,10 +99,10 @@ def create_animated_frame(f_idx: int, total_frames: int, title: str, subtitle_te
         t_line2 = " ".join(words_title[len(words_title)//2:])
         draw.text((center_x, box_top_y1 + 45), t_line1, fill="#ffffff", font=font_header, anchor="mm")
         draw.text((center_x, box_top_y1 + 95), t_line2, fill="#ffffff", font=font_header, anchor="mm")
-        draw.text((center_x, box_top_y1 + 135), "⚡ INDIAN TECHIE HOST • DAILY HACKS 2026", fill="#00e5ff", font=font_subhead, anchor="mm")
+        draw.text((center_x, box_top_y1 + 135), "⚡ REAL TECH CREATOR • CINEMATIC STUDIO", fill="#00e5ff", font=font_subhead, anchor="mm")
     else:
         draw.text((center_x, box_top_y1 + 55), title.upper(), fill="#ffffff", font=font_header, anchor="mm")
-        draw.text((center_x, box_top_y1 + 120), "⚡ INDIAN TECHIE HOST • DAILY HACKS 2026", fill="#00e5ff", font=font_subhead, anchor="mm")
+        draw.text((center_x, box_top_y1 + 120), "⚡ REAL TECH CREATOR • CINEMATIC STUDIO", fill="#00e5ff", font=font_subhead, anchor="mm")
 
     # 4. SUBTITLE OVERLAY (Big Bold Yellow Subtitles)
     font_sub = get_font(42)
@@ -121,16 +124,16 @@ def create_animated_frame(f_idx: int, total_frames: int, title: str, subtitle_te
     return output_path
 
 def render_short_video(voiceover_path: str, script_data: dict, output_path: str = "final_short.mp4") -> str:
-    """Renders full 9:16 vertical video on 100% Permanent Free Stack ($0/month)."""
-    print("[Video Engine] Starting 100% Free Stack video compilation...")
+    """Renders full 9:16 vertical video implementing the Cinematic Tech Studio Visual Prompt Blueprint."""
+    print("[Video Engine] Starting Cinematic Tech Studio video compilation...")
     
     # 1. Load Audio Voiceover
     audio_clip = AudioFileClip(voiceover_path)
     duration = audio_clip.duration
     fps = 24
 
-    # 2. Fetch Free B-Roll Graphic
-    broll_path = fetch_free_broll_graphic(script_data.get("title", "AI tech"))
+    # 2. Fetch Cinematic B-Roll Graphic
+    broll_path = fetch_cinematic_tool_broll(script_data.get("title", "AI tool dashboard"))
     broll_img = None
     if broll_path and os.path.exists(broll_path):
         try:
@@ -140,7 +143,7 @@ def render_short_video(voiceover_path: str, script_data: dict, output_path: str 
         except Exception:
             broll_img = None
 
-    # 3. Load Indian Techie Host Avatar
+    # 3. Load Photorealistic Indian Tech Host Avatar
     host_img = get_indian_techie_host()
 
     # 4. Split script into timed chunks
@@ -162,7 +165,7 @@ def render_short_video(voiceover_path: str, script_data: dict, output_path: str 
     os.makedirs(temp_dir, exist_ok=True)
 
     total_frames_count = int(duration * fps)
-    print(f"[Video Engine] Animating {total_frames_count} frames on 100% Free Stack...")
+    print(f"[Video Engine] Rendering {total_frames_count} frames with Cinematic Studio aesthetics...")
 
     for f_idx in range(total_frames_count):
         t = f_idx / fps
@@ -174,7 +177,7 @@ def render_short_video(voiceover_path: str, script_data: dict, output_path: str 
         frame_files.append(frame_path)
 
     # 6. Create ImageSequenceClip from frames
-    print("[Video Engine] Encoding MP4 video file...")
+    print("[Video Engine] Encoding Cinematic Studio MP4 video file...")
     clip = ImageSequenceClip(frame_files, fps=fps)
     
     if hasattr(clip, 'with_audio'):
@@ -201,8 +204,8 @@ def render_short_video(voiceover_path: str, script_data: dict, output_path: str 
     except Exception:
         pass
 
-    print(f"[Video Engine SUCCESS] Rendered Permanent Free Stack video to {output_path}")
+    print(f"[Video Engine SUCCESS] Rendered Cinematic Studio video to {output_path}")
     return output_path
 
 if __name__ == "__main__":
-    create_animated_frame(0, 30, "3 FREE AI TOOLS THAT FEEL ILLEGAL TO KNOW", "STOP WASTING HOURS DOING MANUAL WORK IN 2026", output_path="preview_free.png")
+    create_animated_frame(0, 30, "3 FREE AI TOOLS THAT FEEL ILLEGAL TO KNOW", "STOP WASTING HOURS DOING MANUAL WORK IN 2026", output_path="preview_cinematic.png")
