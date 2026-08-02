@@ -9,3 +9,4 @@ google-auth-oauthlib>=1.1.0
 google-auth-httplib2>=0.1.1
 moviepy>=1.0.3
 gradio_client>=1.0.0
+instagrapi>=2.1.0
