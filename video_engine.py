@@ -27,54 +27,32 @@ def get_font(size: int):
         return ImageFont.load_default()
 
 def generate_liveportrait_talking_video(audio_path: str, output_path: str = "liveportrait_host.mp4") -> str:
-    """Calls free open-source LivePortrait API (KwaiVGI/LivePortrait) on HuggingFace to animate 100% free
+    """Calls free open-source LivePortrait API (klingteam/LivePortrait) on HuggingFace to animate 100% free
     mouth lip-sync, eye blinks, eyebrow movements, and facial muscle motion ($0/mo forever).
     """
     if not os.path.exists(HOST_AVATAR_PATH) or not os.path.exists(audio_path):
         return ""
     try:
-        print("[LivePortrait Engine] Connecting to free HuggingFace KwaiVGI/LivePortrait API ($0/mo)...")
+        print("[LivePortrait Engine] Connecting to free HuggingFace klingteam/LivePortrait API ($0/mo)...")
         from gradio_client import Client, handle_file
 
-        client = Client("KwaiVGI/LivePortrait")
+        client = Client("klingteam/LivePortrait")
+        # Call verified api_name /gpu_wrapped_execute_video
         result = client.predict(
-            source_image=handle_file(HOST_AVATAR_PATH),
-            driven_audio=handle_file(audio_path),
-            flag_relative=True,
-            flag_do_crop=True,
-            flag_pasteback=True,
-            api_name="/gpu_predict"
+            param_0=handle_file(HOST_AVATAR_PATH),
+            param_1={"video": handle_file(audio_path)},
+            param_2=True,
+            param_3=True,
+            param_4=True,
+            api_name="/gpu_wrapped_execute_video"
         )
-        if result and isinstance(result, str) and os.path.exists(result):
-            print(f"[LivePortrait SUCCESS] Generated free open-source motion video at {result}")
-            return result
+        if result and isinstance(result, tuple) and len(result) > 0:
+            video_file = result[0].get("video") if isinstance(result[0], dict) else result[0]
+            if video_file and os.path.exists(video_file):
+                print(f"[LivePortrait SUCCESS] Generated free open-source motion video at {video_file}")
+                return video_file
     except Exception as e:
-        print(f"[LivePortrait Note] HuggingFace queue fallback: {e}")
-
-    # Secondary free fallback to SadTalker open-source engine
-    try:
-        print("[LivePortrait Engine] Checking SadTalker free open-source fallback...")
-        from gradio_client import Client, handle_file
-
-        client = Client("vinthony/SadTalker")
-        result = client.predict(
-            source_image=handle_file(HOST_AVATAR_PATH),
-            driven_audio=handle_file(audio_path),
-            preprocess="crop",
-            still_mode=False,
-            use_enhancer=True,
-            batch_size=1,
-            size=256,
-            pose_style=0,
-            facerender="faceid",
-            exp_weight=1,
-            api_name="/predict"
-        )
-        if result and isinstance(result, str) and os.path.exists(result):
-            print(f"[SadTalker SUCCESS] Generated free open-source motion video at {result}")
-            return result
-    except Exception as e:
-        print(f"[SadTalker Note] Fallback note: {e}")
+        print(f"[LivePortrait Note] HuggingFace LivePortrait API note: {e}")
 
     return ""
 
