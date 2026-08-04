@@ -1,5 +1,10 @@
 import os
 import sys
+
+# Ensure UTF-8 console output on Windows & Linux
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+
 import argparse
 import config
 import script_generator
@@ -11,11 +16,10 @@ import marketing_agent
 
 def run_faceless_factory_pipeline(niche_key: str = "ai_tools"):
     print("=====================================================")
-    print("🚀 STARTING AUTOMATED FACELESS VIDEO & REVENUE ENGINE")
+    print("[*] STARTING AUTOMATED FACELESS VIDEO & REVENUE ENGINE")
     print(f"Target Niche: {niche_key}")
     print("=====================================================")
 
-    # Ensure valid niche key
     if niche_key not in config.HIGH_INCOME_NICHES:
         niche_key = "ai_tools"
 
@@ -50,14 +54,18 @@ def run_faceless_factory_pipeline(niche_key: str = "ai_tools"):
 
     # Step 5: Upload to YouTube & Instagram Reels
     print("\n[Step 5/5] Publishing live to YouTube Shorts & Instagram Reels...")
-    yt_result = youtube_uploader.upload_short_to_youtube(video_path, script_data)
+    title = script_data.get("title", "AI Tools Hack")
+    desc = script_data.get("description", "")
+    tags = script_data.get("hashtags", ["Shorts", "AITools"])
+
+    yt_result = youtube_uploader.upload_short_to_youtube(video_path, title, desc, tags)
     print(f"-> YouTube Status: {yt_result}")
 
     insta_result = insta_uploader.upload_reel_to_instagram(video_path, script_data)
     print(f"-> Instagram Status: {insta_result}")
 
     print("\n=====================================================")
-    print("✅ ENGINE PIPELINE EXECUTION COMPLETE!")
+    print("[*] ENGINE PIPELINE EXECUTION COMPLETE!")
     print("=====================================================")
 
 if __name__ == "__main__":
