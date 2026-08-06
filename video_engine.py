@@ -11,7 +11,7 @@ except ImportError:
     from moviepy.editor import ImageSequenceClip, AudioFileClip
 
 FONT_PATH = os.path.join(os.path.dirname(__file__), "fonts", "Montserrat-Bold.ttf")
-HOST_AVATAR_PATH = os.path.join(os.path.dirname(__file__), "assets", "indian_techie_host.png")
+ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
 
 def get_font(size: int):
     """Loads bundled Montserrat-Bold font strictly for large readable typography."""
@@ -25,26 +25,36 @@ def get_font(size: int):
     except Exception:
         return ImageFont.load_default()
 
-def fetch_action_scene_graphic(scene_type: str, output_path: str, width: int = 720, height: int = 1280) -> str:
-    """Fetch distinct 4K action scene graphics (typing code, multi-monitor dashboards, creator gesturing)."""
-    try:
-        scene_prompts = {
-            "host_talking": "4k studio portrait of handsome young indian male tech founder developer talking to camera in dark mode workspace with blue and purple rgb ambient lighting",
-            "hands_typing": "cinematic close up shot of hands typing code fast on mechanical keyboard with glowing rgb backlit keys and multiple coding monitors in dark studio",
-            "code_dashboard": "over the shoulder shot of multiple glowing 4k monitors displaying python code editor terminal windows and ai tool dashboards",
-            "creator_gesturing": "medium shot of young indian tech developer smiling gesturing with hands in dark tech workspace with cyan neon backlighting"
-        }
-        prompt = scene_prompts.get(scene_type, scene_prompts["host_talking"])
-        encoded_prompt = prompt.replace(" ", "%20")
-        url = f"https://pollinations.ai/p/{encoded_prompt}?width={width}&height={height}&model=flux-realism&seed={random.randint(1, 99999)}"
-        res = httpx.get(url, timeout=10.0)
-        if res.status_code == 200:
-            with open(output_path, "wb") as f:
-                f.write(res.content)
-            return output_path
-    except Exception as e:
-        print(f"[Video Engine] Action scene fetch note: {e}")
-    return ""
+def load_action_scene_assets() -> dict:
+    """Loads 4 distinct permanent bundled action scene visual assets."""
+    scenes = {}
+    scene_files = {
+        "host_talking": "indian_techie_host.png",
+        "hands_typing": "hands_typing_code.png",
+        "code_dashboard": "code_dashboard.png",
+        "creator_gesturing": "creator_gesturing.png"
+    }
+    
+    # Load fallback base image
+    base_host_path = os.path.join(ASSETS_DIR, "indian_techie_host.png")
+    base_host_img = None
+    if os.path.exists(base_host_path):
+        try:
+            base_host_img = Image.open(base_host_path).convert("RGB")
+        except Exception:
+            base_host_img = None
+
+    for key, filename in scene_files.items():
+        path = os.path.join(ASSETS_DIR, filename)
+        if os.path.exists(path):
+            try:
+                scenes[key] = Image.open(path).convert("RGB")
+            except Exception:
+                scenes[key] = base_host_img
+        else:
+            scenes[key] = base_host_img
+
+    return scenes
 
 def draw_text_with_outline(draw, position, text, font, fill_color="#FFFFFF", outline_color="#000000", outline_width=4, anchor="mm"):
     """Draws text with heavy dark outline/shadow for 100% readability over video background."""
@@ -56,9 +66,10 @@ def draw_text_with_outline(draw, position, text, font, fill_color="#FFFFFF", out
     draw.text((x, y), text, font=font, fill=fill_color, anchor=anchor)
 
 def create_action_cut_frame(f_idx: int, total_frames: int, title: str, subtitle_text: str, current_scene_img: Image.Image, width: int = 720, height: int = 1280, output_path: str = "frame.png") -> str:
-    """Generates a 9:16 vertical frame with dynamic action camera cuts, zoom motion, and 52px Montserrat captions."""
+    """Generates a 9:16 vertical frame with dynamic multi-camera action cuts and 52px Montserrat captions."""
     if current_scene_img:
-        scale = 1.0 + (math.sin(f_idx * 0.08) * 0.03)  # Smooth motion zoom
+        # Subtle motion zoom within scene cut
+        scale = 1.0 + (math.sin(f_idx * 0.08) * 0.02)
         new_w = int(width * scale)
         new_h = int(height * scale)
         img_resized = current_scene_img.resize((new_w, new_h))
@@ -99,40 +110,15 @@ def create_action_cut_frame(f_idx: int, total_frames: int, title: str, subtitle_
     return output_path
 
 def render_short_video(voiceover_path: str, script_data: dict, output_path: str = "final_short.mp4") -> str:
-    """Renders full 9:16 vertical video featuring MULTI-SCENE ACTION CUTS (host talking, hands typing code, multi-monitors, gesturing)."""
-    print("[Video Engine] Starting Multi-Scene Action Video Compilation...")
+    """Renders full 9:16 vertical video featuring MULTI-SCENE ACTION CAMERA CUTS across 4 distinct visual assets."""
+    print("[Video Engine] Starting Multi-Scene Action Camera Cut Video Compilation...")
     
     audio_clip = AudioFileClip(voiceover_path)
     duration = audio_clip.duration
     fps = 24
 
-    # Pre-generate / load 4 distinct action scene graphics
-    temp_dir = "temp_frames"
-    os.makedirs(temp_dir, exist_ok=True)
-
-    print("[Video Engine] Fetching 4 distinct action scene visual assets...")
-    scenes = {
-        "host_talking": None,
-        "hands_typing": None,
-        "code_dashboard": None,
-        "creator_gesturing": None
-    }
-
-    # Load primary host avatar
-    if os.path.exists(HOST_AVATAR_PATH):
-        try:
-            scenes["host_talking"] = Image.open(HOST_AVATAR_PATH).convert("RGB")
-        except Exception:
-            pass
-
-    # Fetch action shots
-    for s_name in ["hands_typing", "code_dashboard", "creator_gesturing"]:
-        path = fetch_action_scene_graphic(s_name, os.path.join(temp_dir, f"{s_name}.png"))
-        if path and os.path.exists(path):
-            try:
-                scenes[s_name] = Image.open(path).convert("RGB")
-            except Exception:
-                scenes[s_name] = scenes["host_talking"]
+    # Load 4 distinct action scene visual assets
+    scenes = load_action_scene_assets()
 
     words = script_data.get("voice_script", "").split()
     chunks = []
@@ -147,10 +133,13 @@ def render_short_video(voiceover_path: str, script_data: dict, output_path: str 
     frame_files = []
     chunk_duration = duration / len(chunks)
 
-    total_frames_count = int(duration * fps)
-    print(f"[Video Engine] Animating {total_frames_count} frames with dynamic action cuts every 6-8 seconds...")
+    temp_dir = "temp_frames"
+    os.makedirs(temp_dir, exist_ok=True)
 
-    # Action scene switching schedule across 60 seconds
+    total_frames_count = int(duration * fps)
+    print(f"[Video Engine] Animating {total_frames_count} frames with hard camera cuts every 6 seconds across 4 distinct action scenes...")
+
+    # Action scene switching sequence across 60 seconds
     scene_sequence = ["host_talking", "hands_typing", "code_dashboard", "creator_gesturing"]
 
     for f_idx in range(total_frames_count):
@@ -158,8 +147,8 @@ def render_short_video(voiceover_path: str, script_data: dict, output_path: str 
         chunk_idx = min(int(t / chunk_duration), len(chunks) - 1)
         sub_text = chunks[chunk_idx]
 
-        # Switch action scene every 7 seconds
-        scene_idx = int(t / 7.0) % len(scene_sequence)
+        # Switch action camera angle every 6 seconds
+        scene_idx = int(t / 6.0) % len(scene_sequence)
         current_scene_name = scene_sequence[scene_idx]
         current_scene_img = scenes.get(current_scene_name) or scenes["host_talking"]
 
