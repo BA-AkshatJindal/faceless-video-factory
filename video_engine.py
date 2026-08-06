@@ -6,12 +6,12 @@ from PIL import Image, ImageDraw, ImageFont
 import config
 
 try:
-    from moviepy import ImageSequenceClip, AudioFileClip, VideoFileClip, CompositeVideoClip
+    from moviepy import ImageSequenceClip, AudioFileClip, VideoFileClip
 except ImportError:
-    from moviepy.editor import ImageSequenceClip, AudioFileClip, VideoFileClip, CompositeVideoClip
+    from moviepy.editor import ImageSequenceClip, AudioFileClip, VideoFileClip
 
 FONT_PATH = os.path.join(os.path.dirname(__file__), "fonts", "Montserrat-Bold.ttf")
-VIDEOS_DIR = os.path.join(os.path.dirname(__file__), "assets", "videos")
+MOTION_VIDEO_BG_PATH = os.path.join(os.path.dirname(__file__), "assets", "videos", "tech_motion_bg.mp4")
 HOST_AVATAR_PATH = os.path.join(os.path.dirname(__file__), "assets", "indian_techie_host.png")
 
 def get_font(size: int):
@@ -72,28 +72,27 @@ def create_caption_overlay_frame(f_idx: int, total_frames: int, title: str, subt
     return output_path
 
 def render_short_video(voiceover_path: str, script_data: dict, output_path: str = "final_short.mp4") -> str:
-    """Renders full 9:16 vertical video using REAL MOVING MP4 VIDEO CLIPS as video background ($0/mo Free)."""
-    print("[Video Engine] Starting REAL MOTION MP4 VIDEO compilation ($0/mo Free)...")
+    """Renders full 9:16 vertical video using REAL CONTINUOUS MOVING MP4 VIDEO as background ($0/mo Free)."""
+    print("[Video Engine] Starting REAL CONTINUOUS MOTION MP4 VIDEO compilation ($0/mo Free)...")
     
     audio_clip = AudioFileClip(voiceover_path)
     duration = audio_clip.duration
     fps = 24
 
-    # Load real MP4 video background clips
-    video_clips_paths = [
-        os.path.join(VIDEOS_DIR, "typing.mp4"),
-        os.path.join(VIDEOS_DIR, "code.mp4"),
-        os.path.join(VIDEOS_DIR, "studio.mp4")
-    ]
-    
-    video_clips = []
-    for vp in video_clips_paths:
-        if os.path.exists(vp):
-            try:
-                vc = VideoFileClip(vp)
-                video_clips.append(vc)
-            except Exception:
-                pass
+    # Ensure motion video background exists
+    if not os.path.exists(MOTION_VIDEO_BG_PATH):
+        try:
+            import generate_real_motion
+            generate_real_motion.generate_procedural_motion_video(MOTION_VIDEO_BG_PATH, duration_sec=15)
+        except Exception:
+            pass
+
+    bg_video_clip = None
+    if os.path.exists(MOTION_VIDEO_BG_PATH):
+        try:
+            bg_video_clip = VideoFileClip(MOTION_VIDEO_BG_PATH)
+        except Exception as e:
+            print(f"[Video Engine] Error loading motion background video: {e}")
 
     words = script_data.get("voice_script", "").split()
     chunks = []
@@ -112,22 +111,18 @@ def render_short_video(voiceover_path: str, script_data: dict, output_path: str 
     os.makedirs(temp_dir, exist_ok=True)
 
     total_frames_count = int(duration * fps)
-    print(f"[Video Engine] Animating {total_frames_count} frames over REAL MOVING MP4 VIDEO CLIPS...")
+    print(f"[Video Engine] Animating {total_frames_count} frames over REAL CONTINUOUS MOVING MP4 VIDEO...")
 
-    # Extract background frames from real motion video clips
     for f_idx in range(total_frames_count):
         t = f_idx / fps
         chunk_idx = min(int(t / chunk_duration), len(chunks) - 1)
         sub_text = chunks[chunk_idx]
 
         bg_frame_img = None
-        if video_clips:
-            # Switch between real motion video clips every 5 seconds
-            vc_idx = int(t / 5.0) % len(video_clips)
-            clip_obj = video_clips[vc_idx]
-            clip_t = t % clip_obj.duration
+        if bg_video_clip:
+            clip_t = t % bg_video_clip.duration
             try:
-                frame_array = clip_obj.get_frame(clip_t)
+                frame_array = bg_video_clip.get_frame(clip_t)
                 bg_frame_img = Image.fromarray(frame_array)
             except Exception:
                 bg_frame_img = None
@@ -138,18 +133,17 @@ def render_short_video(voiceover_path: str, script_data: dict, output_path: str 
             except Exception:
                 bg_frame_img = None
 
-        frame_path = os.path.join(temp_dir, f"frame_{f_idx:05d}.png")
+        frame_path = os.path.join(temp_dir, f"frame_{f_idx:04d}.png")
         create_caption_overlay_frame(f_idx, total_frames_count, title, sub_text, bg_frame=bg_frame_img, output_path=frame_path)
         frame_files.append(frame_path)
 
-    # Close video clips
-    for vc in video_clips:
+    if bg_video_clip:
         try:
-            vc.close()
+            bg_video_clip.close()
         except Exception:
             pass
 
-    print("[Video Engine] Encoding 100% REAL MOTION MP4 VIDEO file...")
+    print("[Video Engine] Encoding 100% REAL CONTINUOUS MOTION MP4 VIDEO file...")
     clip = ImageSequenceClip(frame_files, fps=fps)
     
     if hasattr(clip, 'with_audio'):
@@ -173,7 +167,7 @@ def render_short_video(voiceover_path: str, script_data: dict, output_path: str 
     except Exception:
         pass
 
-    print(f"[Video Engine SUCCESS] Rendered 100% REAL MOTION MP4 VIDEO to {output_path}")
+    print(f"[Video Engine SUCCESS] Rendered 100% REAL CONTINUOUS MOTION MP4 VIDEO to {output_path}")
     return output_path
 
 if __name__ == "__main__":
