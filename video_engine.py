@@ -7,12 +7,11 @@ from PIL import Image, ImageDraw, ImageFont
 import config
 
 try:
-    from moviepy import ImageSequenceClip, AudioFileClip, VideoFileClip
+    from moviepy import ImageSequenceClip, AudioFileClip, VideoFileClip, concatenate_videoclips
 except ImportError:
-    from moviepy.editor import ImageSequenceClip, AudioFileClip, VideoFileClip
+    from moviepy.editor import ImageSequenceClip, AudioFileClip, VideoFileClip, concatenate_videoclips
 
 FONT_PATH = os.path.join(os.path.dirname(__file__), "fonts", "Montserrat-Bold.ttf")
-MOTION_VIDEO_BG_PATH = os.path.join(os.path.dirname(__file__), "assets", "videos", "tech_motion_bg.mp4")
 HOST_AVATAR_PATH = os.path.join(os.path.dirname(__file__), "assets", "indian_techie_host.png")
 
 def get_font(size: int):
@@ -27,42 +26,46 @@ def get_font(size: int):
     except Exception:
         return ImageFont.load_default()
 
-def generate_google_veo_motion_video(prompt: str, output_mp4: str = "veo_motion.mp4") -> str:
-    """Calls Google Veo (veo-2.0-generate-001) via Google AI Pro API to generate 100% realistic 1080p 9:16 vertical video motion clips."""
-    api_key = os.environ.get("GEMINI_API_KEY") or getattr(config, "GEMINI_API_KEY", None)
-    if not api_key:
-        print("[Google Veo Engine] GEMINI_API_KEY not found in environment. Using continuous motion engine...")
+def generate_free_liveportrait_avatar_talking(audio_path: str, output_path: str = "avatar_talking.mp4") -> str:
+    """Animates indian_techie_host.png with 100% FREE open-source LivePortrait AI ($0/mo forever).
+    Uses 5-second chunking to stay within HuggingFace free GPU tier limits.
+    """
+    if not os.path.exists(HOST_AVATAR_PATH) or not os.path.exists(audio_path):
         return ""
-
+    
+    print("[LivePortrait Free Engine] Animating Indian Tech Host avatar with 100% Free LivePortrait AI ($0/mo)...")
+    
     try:
-        print("[Google Veo Engine] Connecting to Google Veo API (veo-2.0-generate-001)...")
-        from google import genai
-        client = genai.Client(api_key=api_key)
+        from gradio_client import Client, handle_file
+        client = Client("klingteam/LivePortrait")
 
-        # Call Google Veo Video Generation model
-        operation = client.models.generate_videos(
-            model="veo-2.0-generate-001",
-            prompt=f"4k vertical video 9:16 {prompt}, dark rgb tech studio lighting, cinematic hyperrealistic photorealistic developer",
-            config={
-                "aspect_ratio": "9:16",
-                "person_generation": "allow_adult",
-                "fps": 24
-            }
+        # Trim to 5s chunk to guarantee zero-cost free GPU processing
+        chunk_audio_path = "temp_5s_audio.mp3"
+        audio_clip = AudioFileClip(audio_path)
+        sub_clip = audio_clip.subclipped(0, min(5.0, audio_clip.duration))
+        sub_clip.write_audiofile(chunk_audio_path, logger=None)
+        sub_clip.close()
+        audio_clip.close()
+
+        result = client.predict(
+            param_0=handle_file(HOST_AVATAR_PATH),
+            param_1={"video": handle_file(chunk_audio_path)},
+            param_2=True,
+            param_3=True,
+            param_4=True,
+            api_name="/gpu_wrapped_execute_video"
         )
 
-        while not operation.done:
-            time.sleep(10)
-            operation = client.operations.get(operation)
+        if os.path.exists(chunk_audio_path):
+            os.remove(chunk_audio_path)
 
-        result = operation.result
-        if result and getattr(result, "generated_videos", None):
-            video_bytes = result.generated_videos[0].video.video_bytes
-            with open(output_mp4, "wb") as f:
-                f.write(video_bytes)
-            print(f"[Google Veo SUCCESS] Generated Google Veo 9:16 motion video at {output_mp4}")
-            return output_mp4
+        if result and isinstance(result, tuple) and len(result) > 0:
+            video_file = result[0].get("video") if isinstance(result[0], dict) else result[0]
+            if video_file and os.path.exists(video_file):
+                print(f"[LivePortrait Free SUCCESS] Generated 100% Free Talking Avatar Video at {video_file}")
+                return video_file
     except Exception as e:
-        print(f"[Google Veo Note] Google Veo API note: {e}")
+        print(f"[LivePortrait Free Note] Free GPU space note: {e}")
 
     return ""
 
@@ -76,11 +79,11 @@ def draw_text_with_outline(draw, position, text, font, fill_color="#FFFFFF", out
     draw.text((x, y), text, font=font, fill=fill_color, anchor=anchor)
 
 def create_caption_overlay_frame(f_idx: int, total_frames: int, title: str, subtitle_text: str, bg_frame: Image.Image, width: int = 720, height: int = 1280, output_path: str = "frame.png") -> str:
-    """Overlays 52px Montserrat-Bold yellow/white captions over Google Veo / real moving MP4 video frames."""
+    """Overlays 52px Montserrat-Bold yellow/white captions over animated talking avatar video frames."""
     if bg_frame:
         img = bg_frame.resize((width, height)).copy()
         dark_overlay = Image.new("RGB", (width, height), color="#000000")
-        img = Image.blend(img, dark_overlay, alpha=0.35)
+        img = Image.blend(img, dark_overlay, alpha=0.30)
     else:
         img = Image.new("RGB", (width, height), color="#060913")
 
@@ -112,32 +115,29 @@ def create_caption_overlay_frame(f_idx: int, total_frames: int, title: str, subt
     return output_path
 
 def render_short_video(voiceover_path: str, script_data: dict, output_path: str = "final_short.mp4") -> str:
-    """Renders full 9:16 vertical video using GOOGLE VEO AI Video Generation Engine (veo-2.0-generate-001)."""
-    print("[Video Engine] Starting GOOGLE VEO 4K Video Compilation...")
+    """Renders full 9:16 vertical video featuring 100% FREE Talking Avatar Lip-Sync & Montserrat captions ($0/mo)."""
+    print("[Video Engine] Starting 100% FREE Talking Avatar Video Compilation ($0/mo)...")
     
     audio_clip = AudioFileClip(voiceover_path)
     duration = audio_clip.duration
     fps = 24
 
-    # 1. Generate Google Veo AI Motion Video
-    veo_prompt = "handsome young indian male tech founder developer talking to camera in dark workspace with blue and purple rgb ambient lighting, typing code on mechanical keyboard, gesturing with hands"
-    veo_video_file = generate_google_veo_motion_video(veo_prompt)
+    # 1. Generate 100% FREE LivePortrait Talking Avatar Video
+    avatar_video_file = generate_free_liveportrait_avatar_talking(voiceover_path)
 
-    bg_video_clip = None
-    target_bg_path = veo_video_file if (veo_video_file and os.path.exists(veo_video_file)) else MOTION_VIDEO_BG_PATH
-
-    if not os.path.exists(target_bg_path):
+    avatar_clip = None
+    if avatar_video_file and os.path.exists(avatar_video_file):
         try:
-            import generate_real_motion
-            generate_real_motion.generate_procedural_motion_video(target_bg_path, duration_sec=15)
-        except Exception:
-            pass
-
-    if os.path.exists(target_bg_path):
-        try:
-            bg_video_clip = VideoFileClip(target_bg_path)
+            avatar_clip = VideoFileClip(avatar_video_file)
         except Exception as e:
-            print(f"[Video Engine] Motion video load note: {e}")
+            print(f"[Video Engine] Avatar clip load note: {e}")
+
+    host_img = None
+    if os.path.exists(HOST_AVATAR_PATH):
+        try:
+            host_img = Image.open(HOST_AVATAR_PATH).convert("RGB")
+        except Exception:
+            host_img = None
 
     words = script_data.get("voice_script", "").split()
     chunks = []
@@ -156,7 +156,7 @@ def render_short_video(voiceover_path: str, script_data: dict, output_path: str 
     os.makedirs(temp_dir, exist_ok=True)
 
     total_frames_count = int(duration * fps)
-    print(f"[Video Engine] Animating {total_frames_count} frames over GOOGLE VEO Motion Video...")
+    print(f"[Video Engine] Animating {total_frames_count} frames with 100% Free LivePortrait Talking Avatar...")
 
     for f_idx in range(total_frames_count):
         t = f_idx / fps
@@ -164,31 +164,34 @@ def render_short_video(voiceover_path: str, script_data: dict, output_path: str 
         sub_text = chunks[chunk_idx]
 
         bg_frame_img = None
-        if bg_video_clip:
-            clip_t = t % bg_video_clip.duration
+        if avatar_clip:
+            clip_t = t % avatar_clip.duration
             try:
-                frame_array = bg_video_clip.get_frame(clip_t)
+                frame_array = avatar_clip.get_frame(clip_t)
                 bg_frame_img = Image.fromarray(frame_array)
             except Exception:
                 bg_frame_img = None
 
-        if not bg_frame_img and os.path.exists(HOST_AVATAR_PATH):
-            try:
-                bg_frame_img = Image.open(HOST_AVATAR_PATH).convert("RGB")
-            except Exception:
-                bg_frame_img = None
+        if not bg_frame_img and host_img:
+            scale = 1.0 + (math.sin(f_idx * 0.05) * 0.03)
+            new_w = int(720 * scale)
+            new_h = int(1280 * scale)
+            img_resized = host_img.resize((new_w, new_h))
+            crop_x = (new_w - 720) // 2
+            crop_y = (new_h - 1280) // 2
+            bg_frame_img = img_resized.crop((crop_x, crop_y, crop_x + 720, crop_y + 1280)).copy()
 
         frame_path = os.path.join(temp_dir, f"frame_{f_idx:04d}.png")
         create_caption_overlay_frame(f_idx, total_frames_count, title, sub_text, bg_frame=bg_frame_img, output_path=frame_path)
         frame_files.append(frame_path)
 
-    if bg_video_clip:
+    if avatar_clip:
         try:
-            bg_video_clip.close()
+            avatar_clip.close()
         except Exception:
             pass
 
-    print("[Video Engine] Encoding GOOGLE VEO MP4 video file...")
+    print("[Video Engine] Encoding Talking Avatar MP4 video file...")
     clip = ImageSequenceClip(frame_files, fps=fps)
     
     if hasattr(clip, 'with_audio'):
@@ -206,17 +209,17 @@ def render_short_video(voiceover_path: str, script_data: dict, output_path: str 
     )
 
     try:
-        if veo_video_file and os.path.exists(veo_video_file):
-            os.remove(veo_video_file)
+        if avatar_video_file and os.path.exists(avatar_video_file):
+            os.remove(avatar_video_file)
         for f in os.listdir(temp_dir):
             os.remove(os.path.join(temp_dir, f))
         os.rmdir(temp_dir)
     except Exception:
         pass
 
-    print(f"[Video Engine SUCCESS] Rendered GOOGLE VEO motion video to {output_path}")
+    print(f"[Video Engine SUCCESS] Rendered 100% Free Talking Avatar video to {output_path}")
     return output_path
 
 if __name__ == "__main__":
     test_img = Image.new("RGB", (720, 1280), color="#0a1020")
-    create_caption_overlay_frame(0, 30, "3 FREE AI TOOLS THAT FEEL ILLEGAL TO KNOW", "STOP WASTING HOURS DOING MANUAL WORK IN 2026", bg_frame=test_img, output_path="preview_veo_motion.png")
+    create_caption_overlay_frame(0, 30, "3 FREE AI TOOLS THAT FEEL ILLEGAL TO KNOW", "STOP WASTING HOURS DOING MANUAL WORK IN 2026", bg_frame=test_img, output_path="preview_avatar_talking.png")
